@@ -34,7 +34,7 @@ Start PostgreSQL and create the tables:
 ```cmd
 docker compose up -d
 npx prisma generate
-npx prisma migrate dev --name init
+npx prisma migrate deploy
 ```
 
 Run the API:
@@ -55,9 +55,10 @@ Health check: `GET http://localhost:5000/api/health`
 | POST | `/api/auth/login` | Login |
 | GET | `/api/auth/me` | Current user (login cookie required) |
 | POST | `/api/auth/logout` | Clear login cookie |
-| GET | `/api/notes` | List your notes |
+| GET | `/api/notes` | List notes with title search and pagination; favourites first |
 | POST | `/api/notes` | Create a note |
 | PATCH | `/api/notes/:id` | Update your note |
+| PATCH | `/api/notes/:id/favourite` | Mark/unmark your note as favourite |
 | DELETE | `/api/notes/:id` | Delete your note |
 
 ## Quick test with Thunder Client
@@ -67,9 +68,11 @@ Health check: `GET http://localhost:5000/api/health`
 3. Register with JSON `{ "name": "Manish", "email": "manish@example.com", "password": "your-password-here" }` at `POST /api/auth/register`.
 4. Call `GET /api/auth/me`; it should return `200` while the `token` cookie is present and `401` after you remove it.
 5. Create a note with JSON `{ "title": "First note", "body": "A private note" }` at `POST /api/notes`.
-6. List notes with `GET /api/notes`, then use its note ID for PATCH or DELETE.
-7. Remove `X-CSRF-Token` from a POST/PATCH/DELETE request. It should return `403`.
-8. Send invalid registration data to see Zod return `400`.
+6. List notes with `GET /api/notes`. Use query parameters such as `GET /api/notes?search=prisma&page=1&limit=5` (the `query` parameter also works instead of `search`). Search matches note titles; encrypted note bodies are not searched.
+7. Mark a note favourite with `PATCH /api/notes/NOTE_ID/favourite` and JSON `{ "isFavourite": true }`. Send `{ "isFavourite": false }` to remove it from favourites. Both actions require the CSRF header and only affect your own notes.
+8. Use the returned `pagination` object (`page`, `limit`, `totalNotes`, `totalPages`) to navigate pages. Favourite notes appear first within the matching result set.
+9. Remove `X-CSRF-Token` from a POST/PATCH/DELETE request. It should return `403`.
+10. Send invalid registration data to see Zod return `400`.
 
 For PATCH, send at least one of `title` or `body`, e.g. `{ "title": "Updated title" }`.
 
